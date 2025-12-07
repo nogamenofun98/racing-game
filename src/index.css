@@ -1,0 +1,610 @@
+:root {
+  font-family: 'Outfit', Inter, system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.9);
+  background-color: #121212;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #121212;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.8em 1.5em;
+  font-size: 1em;
+  font-weight: 600;
+  font-family: inherit;
+  background-color: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.boost-grid {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  width: 100%;
+  padding: 1rem;
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  /* Deep blue gradient */
+  overflow: hidden;
+  position: relative;
+}
+
+/* Setup Screen - Glassmorphism */
+.setup-screen {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 3rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  color: white;
+  text-align: center;
+  max-width: 500px;
+  width: 90%;
+  animation: slideUp 0.5s ease-out;
+}
+
+.setup-screen h1 {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Mini Map */
+.mini-map-container {
+  position: fixed;
+  top: 120px;
+  /* Moved below timer */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  max-width: 800px;
+  /* Removed fixed height */
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  /* Stack rows vertically */
+  padding: 10px;
+  backdrop-filter: blur(4px);
+  gap: 8px;
+  /* Space between tracks */
+}
+
+.mini-map-row {
+  width: 100%;
+  height: 12px;
+  /* Height per track */
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.mini-map-track {
+  position: relative;
+  flex: 1;
+  /* Ensure it takes full available width */
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.mini-map-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  /* transition removed for instant updates */
+}
+
+.setup-screen h1 {
+  margin-bottom: 2rem;
+  font-size: 2.5rem;
+  background: linear-gradient(to right, #fff, #a5d8ff);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.racers-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1.5rem;
+  padding-right: 0.5rem;
+}
+
+.racer-input-group {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.racer-input-group input {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  color: white;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.racer-input-group input:focus {
+  border-color: #4facfe;
+}
+
+.remove-btn {
+  background-color: rgba(255, 68, 68, 0.2);
+  color: #ff8888;
+  padding: 0 1rem;
+  border-color: rgba(255, 68, 68, 0.3);
+}
+
+.remove-btn:hover {
+  background-color: rgba(255, 68, 68, 0.4);
+}
+
+.add-btn {
+  background: linear-gradient(45deg, #00b09b, #96c93d);
+  border: none;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.add-btn:disabled {
+  background: linear-gradient(45deg, #656768 0%, #151f20 100%);
+  cursor: not-allowed;
+}
+
+.start-btn {
+  background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+  border: none;
+  width: 100%;
+  margin-top: 1.5rem;
+  font-size: 1.3rem;
+  padding: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.start-btn:disabled {
+  background: linear-gradient(45deg, #656768 0%, #151f20 100%);
+  cursor: not-allowed;
+}
+
+/* Track Styles */
+.track-container {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  /* Align track to bottom */
+  perspective: 1200px;
+  padding-bottom: 2rem;
+  /* Keep padding for spacing */
+  position: relative;
+  overflow: hidden;
+  z-index: 10;
+  background-color: transparent;
+  /* Make transparent to see background */
+}
+
+.track-scroll-container {
+  will-change: transform;
+  /* Transform is applied via JS */
+}
+
+/* Background Parallax */
+.background-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  overflow: hidden;
+  background-color: #4CAF50;
+  /* Grass color for the whole world */
+}
+
+.bg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-repeat: repeat-x;
+  will-change: background-position;
+}
+
+.bg-sky {
+  /* Renamed to bg-grass-pattern or just removed sky */
+  /* User said "just add some grass or tree on the land" */
+  /* Let's use this layer for some ground texture */
+  z-index: 1;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.2) 2px, transparent 3px),
+    radial-gradient(circle at 30% 60%, rgba(255, 255, 255, 0.2) 2px, transparent 3px),
+    radial-gradient(circle at 70% 40%, rgba(255, 255, 255, 0.2) 2px, transparent 3px),
+    radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.2) 2px, transparent 3px);
+  background-size: 400px 400px;
+  opacity: 0.5;
+}
+
+.bg-trees {
+  bottom: 55%;
+  /* Move higher up */
+  height: 300px;
+  /* Increase height for new image */
+  top: auto;
+  z-index: 11;
+  background-image: url('./assets/trees_new.png');
+  background-size: auto 100%;
+  background-repeat: repeat-x;
+  background-position: bottom left;
+}
+
+/* Grass Texture on Track Container is removed, moved to track itself if needed or separate layer */
+/* We'll keep the track green background */
+
+.track {
+  background: #d32f2f;
+  /* Richer red */
+  /* Width is set in JS */
+  position: relative;
+  border-top: 8px solid white;
+  border-bottom: 8px solid white;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  transform: rotateX(20deg) scale(0.95);
+  /* 3D tilt */
+  transform-style: preserve-3d;
+  transform-origin: bottom center;
+}
+
+.lane {
+  height: 90px;
+  border-bottom: 3px dashed rgba(255, 255, 255, 0.4);
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+.lane:last-child {
+  border-bottom: none;
+}
+
+.finish-line {
+  position: absolute;
+  right: 10%;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background-image:
+    linear-gradient(45deg, #000 25%, transparent 25%),
+    linear-gradient(-45deg, #000 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #000 75%),
+    linear-gradient(-45deg, transparent 75%, #000 75%);
+  background-size: 20px 20px;
+  background-color: #fff;
+  z-index: 1;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Racer Styles */
+.racer-container {
+  position: absolute;
+  left: 0;
+  bottom: -45px;
+  /* Removed transition: left... we will use transform in JS */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  will-change: transform;
+  /* Optimize for GPU */
+}
+
+.racer-name {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  margin-bottom: -80px;
+  z-index: 20;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
+  transform-origin: bottom center;
+  animation: float 2s ease-in-out infinite;
+}
+
+.racer-name::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px 5px 0;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
+}
+
+.racer-sprite {
+  width: 80px;
+  /* Slightly larger */
+  height: 80px;
+  background-image: url('/runner_v2.png');
+  background-size: 600% 100%;
+  /* 6 frames */
+  animation: run-cycle 0.6s steps(6) infinite;
+  filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes run-cycle {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 100% 0;
+  }
+}
+
+.racer-sprite.idle {
+  animation: none;
+  background-position: 0 0;
+}
+
+.racer-sprite.cheer {
+  animation: bounce 0.5s infinite alternate;
+  background-position: 0 0;
+  /* Just use first frame for now */
+}
+
+@keyframes bounce {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-15px);
+  }
+}
+
+/* Timer */
+.timer {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  padding: 0.8rem 2rem;
+  border-radius: 16px;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 2.5rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Celebration */
+.celebration-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  color: white;
+  animation: fadeIn 0.5s;
+}
+
+.winner-text {
+  font-size: 6rem;
+  font-weight: 900;
+  background: linear-gradient(to bottom, #FFD700, #FFA500);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.6));
+  margin-bottom: 1rem;
+  animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.winner-name {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 3rem;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .game-container {
+    padding-bottom: 0;
+  }
+
+  .timer {
+    font-size: 1.5rem;
+    padding: 0.5rem 1rem;
+    top: 20px;
+    width: auto;
+  }
+
+  .mini-map-container {
+    width: 95%;
+    top: 90px;
+    /* Below timer */
+    padding: 8px;
+  }
+
+  .track-container {
+    /* Ensure track stays vertically centered or slightly lower to see racers */
+    justify-content: center;
+    padding-bottom: 50px;
+    /* Space for buttons */
+  }
+
+  .track {
+    /* Scale down track slightly to fit more view */
+    transform: rotateX(20deg) scale(0.85);
+  }
+
+  .lane {
+    height: 70px;
+    /* Smaller lanes */
+  }
+
+  .racer-sprite {
+    width: 60px;
+    height: 60px;
+  }
+
+  .racer-name {
+    font-size: 12px;
+    margin-bottom: -60px;
+    /* Adjust for new sprite size */
+    padding: 2px 6px;
+  }
+
+  /* Game Controls */
+  .game-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+  }
+
+  .boost-grid {
+    gap: 0.5rem;
+    padding: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .boost-btn {
+    padding: 0.6em 1em;
+    font-size: 0.9em;
+    min-width: 80px;
+    /* ensure 2 or 3 buttons per row */
+    flex: 1 1 30%;
+  }
+}
