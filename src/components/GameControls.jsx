@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 export default function GameControls({ racers, onBoost }) {
-    const [cooldowns, setCooldowns] = useState({});
+    const [boostEffects, setBoostEffects] = useState({});
 
-    const handleBoost = (racerId) => {
-        if (cooldowns[racerId]) {
-            return;
-        };
+    const handleBoost = useCallback((racerId) => {
+        // No cooldown gate (user removed). Fire immediately.
         onBoost(racerId);
 
-        // Set local cooldown visual
-        setCooldowns(prev => ({ ...prev, [racerId]: true }));
+        // Local burst feedback (approx mirrors host-side randomness distribution)
+        const roll = Math.random();
+        const effect = roll > 0.8 ? 'mega' : roll > 0.55 ? 'strong' : 'light';
+        setBoostEffects(prev => ({ ...prev, [racerId]: effect }));
         setTimeout(() => {
-            setCooldowns(prev => ({ ...prev, [racerId]: false }));
-        }, 1000); // 1.5 second cooldown
-    };
+            setBoostEffects(prev => {
+                const next = { ...prev };
+                delete next[racerId];
+                return next;
+            });
+        }, 650);
+    }, [onBoost]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -31,25 +35,37 @@ export default function GameControls({ racers, onBoost }) {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [racers, cooldowns]); // Dependencies ensure fresh state access
+    }, [racers, handleBoost]); // Dependencies ensure fresh state access
 
     return (
         <div className="game-controls">
             <div className="boost-grid">
-                {racers.map((racer, index) => (
-                    <button
-                        key={racer.id}
-                        className="boost-btn"
-                        disabled={cooldowns[racer.id] || racer.finished}
-                        onClick={() => handleBoost(racer.id)}
-                        style={{
-                            backgroundColor: `hsl(${[0, 120, 240, 60, 300, 180, 30, 270][(racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0)) % 8]}, 70%, 50%)`,
-                            opacity: cooldowns[racer.id] ? 0.5 : 1
-                        }}
-                    >
-                        {cooldowns[racer.id] ? 'Wait...' : `Boost ${racer.name}!`}
-                    </button>
-                ))}
+                {racers.map((racer) => {
+                    const effect = boostEffects[racer.id];
+                    const colorHue = [0, 120, 240, 60, 300, 180, 30, 270][(racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0)) % 8];
+                    return (
+                        <button
+                            key={racer.id}
+                            className={`boost-btn ${effect ? 'boost-flash' : ''} ${effect === 'mega' ? 'boost-flash--mega' : ''}`}
+                            disabled={racer.finished}
+                            onClick={() => handleBoost(racer.id)}
+                            style={{
+                                backgroundColor: `hsl(${colorHue}, 70%, 50%)`
+                            }}
+                        >
+                            {effect === 'mega'
+                                ? 'Mega Burst!'
+                                : effect === 'strong'
+                                    ? 'Nice Boost!'
+                                    : `Boost ${racer.name}!`}
+                            {effect && (
+                                <span className={`boost-chip boost-chip--${effect}`}>
+                                    {effect === 'mega' ? 'MEGA!' : effect === 'strong' ? 'BOOST!' : 'GO!'}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

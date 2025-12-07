@@ -74,7 +74,10 @@ function App() {
         position: 0,
         speed: 0,
         finished: false,
-        place: null
+        place: null,
+        // Stable per-racer quirks to add personality to boosts and base speed
+        variance: 0.9 + Math.random() * 0.2, // 0.9 - 1.1
+        critChance: 0.12 + Math.random() * 0.12 // 12% - 24%
       }))
     })
 
@@ -117,8 +120,14 @@ function App() {
       if (isHostRef.current) {
         const racer = racersRef.current.find(r => r.id === racerId)
         if (racer && !racer.finished) {
-          const boostAmount = 0.8 + Math.random() * 0.4
-          racer.speed += boostAmount
+          const variance = racer.variance || 1
+          const swing = 0.8 + Math.random() * 0.6 // 0.8 - 1.4
+          const chaos = 0.9 + Math.random() * 0.3 // 0.9 - 1.2
+          const critChance = racer.critChance || 0.18
+          const crit = Math.random() < critChance ? 1.35 + Math.random() * 0.25 : 1
+          const boostAmount = (0.8 + Math.random() * 0.4) * variance * swing * chaos * crit
+          // Cap to keep medium intensity while still noticeable
+          racer.speed += Math.min(boostAmount, 2.4)
           audioController.playSound('cheer')
         }
       }
@@ -225,7 +234,9 @@ function App() {
         raceFinished = true
       } else {
         r.speed *= 0.98
-        const baseSpeed = 0.02 + Math.random() * 0.06
+        const baseVariance = r.variance || 1
+        const jitter = 0.9 + Math.random() * 0.2 // Keeps small differences per tick
+        const baseSpeed = (0.02 + Math.random() * 0.06) * baseVariance * jitter
         r.speed += baseSpeed
         r.position += r.speed * (deltaTime / 16)
 
