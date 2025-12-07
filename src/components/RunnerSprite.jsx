@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import Lottie from 'lottie-react'
 import animationData from '../assets/Loading 50 _ Among Us.json'
 
-const RunnerSprite = ({ hue = 0 }) => {
+const RunnerSprite = ({ hue = 0, size = 225 }) => {
     // Map hue (0-360) to approximate RGB for the suit
     // This is a simplification. Ideally we'd pass RGB directly from Racer.jsx
     // But to keep props consistent, we'll generate RGB from HSL here or just use a lookup
@@ -61,20 +61,20 @@ const RunnerSprite = ({ hue = 0 }) => {
     }, [targetColor])
 
     return (
-        <div className="runner-wrapper">
+        <div
+            className="runner-wrapper"
+            style={{
+                width: `${size}px`,
+                height: `${size}px`,
+                overflow: 'visible'
+            }}
+        >
             <Lottie
                 animationData={modifiedAnimationData}
                 loop={true}
                 autoplay={true}
                 style={{ width: '100%', height: '100%' }}
             />
-            <style>{`
-        .runner-wrapper {
-          width: 225px;
-          height: 225px;
-          overflow: visible; 
-        }
-      `}</style>
         </div>
     )
 }

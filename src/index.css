@@ -15,17 +15,20 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
   background-color: #121212;
-  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 #root {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -54,9 +57,41 @@ button:hover {
 .boost-grid {
   display: flex;
   justify-content: center;
-  gap: 2rem;
+  gap: clamp(0.75rem, 2vw, 2rem);
   width: 100%;
-  padding: 1rem;
+  max-width: 1200px;
+  padding: clamp(0.75rem, 1.5vw, 1.25rem);
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.game-controls {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: sticky;
+  bottom: 0;
+  padding-bottom: clamp(8px, 2vw, 16px);
+  z-index: 900;
+}
+
+.boost-btn {
+  flex: 1 1 clamp(140px, 24%, 260px);
+  min-width: 140px;
+  white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+  .boost-grid {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: clamp(0.5rem, 1vw, 1.25rem);
+  }
+
+  .boost-btn {
+    flex: 1 1 0;
+    min-width: 120px;
+  }
 }
 
 button:active {
@@ -67,9 +102,12 @@ button:active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
+  padding: clamp(12px, 2vw, 24px) clamp(12px, 3vw, 36px);
+  gap: clamp(12px, 1.5vw, 20px);
+  box-sizing: border-box;
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   /* Deep blue gradient */
   overflow: hidden;
@@ -81,15 +119,18 @@ button:active {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  padding: 3rem;
+  padding: clamp(1.5rem, 2.5vw, 3rem);
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   color: white;
   text-align: center;
-  max-width: 500px;
-  width: 90%;
+  width: min(720px, 95vw);
+  max-height: min(90vh, 780px);
+  overflow-y: auto;
+  box-sizing: border-box;
   animation: slideUp 0.5s ease-out;
+  margin: auto;
 }
 
 .setup-screen h1 {
@@ -101,13 +142,13 @@ button:active {
 /* Mini Map */
 .mini-map-container {
   position: fixed;
-  top: 120px;
-  /* Moved below timer */
+  top: clamp(72px, 7vh, 120px);
+  /* Moved below timer and adapts to viewport */
   left: 50%;
   transform: translateX(-50%);
-  width: 60%;
-  max-width: 800px;
-  /* Removed fixed height */
+  width: min(92vw, 900px);
+  max-height: 24vh;
+  overflow-y: auto;
   background: rgba(0, 0, 0, 0.6);
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
@@ -119,11 +160,23 @@ button:active {
   backdrop-filter: blur(4px);
   gap: 8px;
   /* Space between tracks */
+  box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+  .mini-map-container {
+    top: clamp(12px, 2vh, 28px);
+    right: clamp(12px, 2vw, 32px);
+    left: auto;
+    transform: none;
+    width: min(420px, 26vw);
+    max-height: 22vh;
+  }
 }
 
 .mini-map-row {
   width: 100%;
-  height: 12px;
+  height: clamp(10px, 2vh, 16px);
   /* Height per track */
   display: flex;
   align-items: center;
@@ -144,8 +197,8 @@ button:active {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 12px;
-  height: 12px;
+  width: clamp(10px, 2.2vh, 14px);
+  height: clamp(10px, 2.2vh, 14px);
   border-radius: 50%;
   border: 2px solid white;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
@@ -230,6 +283,16 @@ button:active {
   cursor: not-allowed;
 }
 
+.setup-screen .start-btn:disabled::after {
+  content: 'Add at least 2 players to start';
+  display: block;
+  font-size: 0.9rem;
+  color: #ffcccc;
+  margin-top: 6px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 /* Track Styles */
 .track-container {
   width: 100%;
@@ -239,16 +302,18 @@ button:active {
   justify-content: flex-end;
   /* Align track to bottom */
   perspective: 1200px;
-  padding-bottom: 2rem;
+  padding: clamp(8px, 2vw, 16px) 0 clamp(16px, 3vw, 32px);
   /* Keep padding for spacing */
   position: relative;
   overflow: hidden;
   z-index: 10;
   background-color: transparent;
   /* Make transparent to see background */
+  min-height: clamp(360px, 70vh, 780px);
 }
 
 .track-scroll-container {
+  width: 100%;
   will-change: transform;
   /* Transform is applied via JS */
 }
@@ -264,6 +329,7 @@ button:active {
   overflow: hidden;
   background-color: #4CAF50;
   /* Grass color for the whole world */
+  pointer-events: none;
 }
 
 .bg-layer {
@@ -321,7 +387,7 @@ button:active {
 }
 
 .lane {
-  height: 90px;
+  height: clamp(60px, 14vh, 90px);
   border-bottom: 3px dashed rgba(255, 255, 255, 0.4);
   position: relative;
   display: flex;
@@ -353,7 +419,7 @@ button:active {
 .racer-container {
   position: absolute;
   left: 0;
-  bottom: -45px;
+  bottom: clamp(-32px, -6vw, -12px);
   /* Removed transition: left... we will use transform in JS */
   display: flex;
   flex-direction: column;
@@ -368,10 +434,10 @@ button:active {
   color: #333;
   padding: 4px 10px;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: clamp(12px, 1.4vw, 16px);
   font-weight: 800;
   white-space: nowrap;
-  margin-bottom: -80px;
+  margin-bottom: clamp(-68px, -12vw, -40px);
   z-index: 20;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   position: relative;
@@ -434,22 +500,25 @@ button:active {
 
 /* Timer */
 .timer {
-  position: absolute;
-  top: 30px;
+  position: fixed;
+  top: clamp(12px, 2vw, 28px);
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(10px);
   color: #fff;
-  padding: 0.8rem 2rem;
+  padding: clamp(0.6rem, 1.2vw, 1rem) clamp(1.2rem, 2.4vw, 2rem);
   border-radius: 16px;
   font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 2.5rem;
+  font-size: clamp(1.4rem, 2.4vw, 2.5rem);
   font-weight: 700;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   z-index: 100;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  width: min(92vw, 560px);
+  box-sizing: border-box;
+  text-align: center;
 }
 
 /* Celebration */
@@ -536,40 +605,53 @@ button:active {
 }
 
 /* Mobile Responsiveness */
+/* Mobile Portrait */
 @media (max-width: 768px) {
+  .game-container {
+    padding: 12px 12px 96px;
+    gap: 10px;
+  }
+
+  .setup-screen {
+    padding: 1.5rem;
+    /* Reduce padding on mobile */
+  }
+
   .game-container {
     padding-bottom: 0;
   }
 
   .timer {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     padding: 0.5rem 1rem;
-    top: 20px;
-    width: auto;
+    top: 16px;
+    width: min(94vw, 520px);
   }
 
   .mini-map-container {
-    width: 95%;
-    top: 90px;
-    /* Below timer */
-    padding: 8px;
+    width: 96%;
+    max-height: 22vh;
+    top: 72px;
+    /* Moved up slightly */
+    padding: 6px;
   }
 
   .track-container {
-    /* Ensure track stays vertically centered or slightly lower to see racers */
     justify-content: center;
-    padding-bottom: 50px;
-    /* Space for buttons */
+    padding-bottom: 72px;
+    /* More space for buttons */
+    overflow: visible;
+    /* Ensure racers aren't clipped */
+    min-height: clamp(320px, 62vh, 640px);
   }
 
   .track {
-    /* Scale down track slightly to fit more view */
-    transform: rotateX(20deg) scale(0.85);
+    transform: rotateX(20deg) scale(0.9);
+    /* Slightly larger */
   }
 
   .lane {
     height: 70px;
-    /* Smaller lanes */
   }
 
   .racer-sprite {
@@ -579,18 +661,20 @@ button:active {
 
   .racer-name {
     font-size: 12px;
-    margin-bottom: -60px;
-    /* Adjust for new sprite size */
+    margin-bottom: -55px;
     padding: 2px 6px;
   }
 
-  /* Game Controls */
   .game-controls {
     position: fixed;
-    bottom: 20px;
+    bottom: 0;
     left: 0;
+    right: 0;
     width: 100%;
-    z-index: 100;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.35);
+    /* Slight background for readability */
+    padding: 8px 12px 20px;
   }
 
   .boost-grid {
@@ -598,13 +682,57 @@ button:active {
     padding: 0.5rem;
     flex-wrap: wrap;
     justify-content: center;
+    max-width: 100%;
   }
 
   .boost-btn {
-    padding: 0.6em 1em;
+    padding: 0.8em 0.8em;
+    /* Taller touch targets */
     font-size: 0.9em;
-    min-width: 80px;
-    /* ensure 2 or 3 buttons per row */
+    min-width: 70px;
     flex: 1 1 30%;
+  }
+}
+
+/* Mobile Landscape (High width, Low height) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .timer {
+    font-size: 1.2rem;
+    padding: 0.3rem 0.8rem;
+    top: 10px;
+    left: 20px;
+    transform: none;
+    /* Align left */
+  }
+
+  .mini-map-container {
+    width: 200px;
+    /* Fixed small width */
+    top: 10px;
+    right: 20px;
+    left: auto;
+    transform: none;
+    /* Align right */
+    padding: 4px;
+    max-height: 28vh;
+  }
+
+  .track-container {
+    padding-bottom: 32px;
+    min-height: clamp(260px, 62vh, 520px);
+  }
+
+  .track {
+    transform: rotateX(15deg) scale(0.8);
+    /* Flatter angle for landscape */
+  }
+
+  .game-controls {
+    padding-bottom: 10px;
+  }
+
+  .boost-btn {
+    padding: 0.4em 0.8em;
+    font-size: 0.8em;
   }
 }

@@ -4,15 +4,16 @@ export default function GameControls({ racers, onBoost }) {
     const [cooldowns, setCooldowns] = useState({});
 
     const handleBoost = (racerId) => {
-        if (cooldowns[racerId]) return;
-
+        if (cooldowns[racerId]) {
+            return;
+        };
         onBoost(racerId);
 
         // Set local cooldown visual
         setCooldowns(prev => ({ ...prev, [racerId]: true }));
         setTimeout(() => {
             setCooldowns(prev => ({ ...prev, [racerId]: false }));
-        }, 500); // 0.5 second cooldown
+        }, 1000); // 1.5 second cooldown
     };
 
     useEffect(() => {

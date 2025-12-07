@@ -12,7 +12,7 @@ const RaceTrack = forwardRef(({ racers, trackLength, cameraPosition, onRegisterR
                 <div className="track" style={{ width: `${trackLength + 1000}px` }}>
                     <div className="finish-line" style={{ left: `${trackLength}px`, right: 'auto' }}></div>
                     {racers.map((racer, index) => (
-                        <div key={racer.id} className="lane" style={{ zIndex: index }}>
+                        <div key={racer.id} className="lane" style={{ zIndex: racers.length - index }}>
                             <Racer
                                 racer={racer}
                                 ref={(el) => onRegisterRacerRef(racer.id, el)}

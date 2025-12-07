@@ -2,26 +2,36 @@ import React, { forwardRef, useMemo, memo } from 'react'
 import RunnerSprite from './RunnerSprite'
 
 const Racer = memo(forwardRef(({ racer }, ref) => {
-    // We rely on props for INITIAL position/render, but updates happen via ref
-    // console.log(`Racer ${racer.name} rendering`)
-
     // Randomize colors for variety (Original is Red)
     const hue = useMemo(() => {
-        // Distribute hues across the spectrum
         const hues = [0, 120, 240, 60, 300, 180, 30, 270]
-        // Use colorIndex if available, otherwise fallback to ID hash or 0
         const index = racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0)
         return hues[index % hues.length]
     }, [racer.colorIndex, racer.id])
+
+    const isMobilePortrait = typeof window !== 'undefined' &&
+        window.innerWidth <= 768 &&
+        window.innerHeight >= window.innerWidth
+
+    const baseTransform = `translateX(${racer.position || 0}px)`
+    const transform = isMobilePortrait
+        ? `${baseTransform} translateY(-24px) scale(0.7)`
+        : baseTransform
+
+    const spriteSize = isMobilePortrait ? 140 : 225
+    const nameStyle = isMobilePortrait ? { fontSize: '12px', marginBottom: '-40px' } : undefined
 
     return (
         <div
             ref={ref}
             className="racer-container"
-            style={{ transform: `translateX(${racer.position || 0}px)` }}
+            style={{
+                transform,
+                bottom: isMobilePortrait ? '-12px' : undefined
+            }}
         >
-            <div className="racer-name">{racer.name}</div>
-            <RunnerSprite hue={hue} />
+            <div className="racer-name" style={nameStyle}>{racer.name}</div>
+            <RunnerSprite hue={hue} size={spriteSize} />
         </div>
     )
 }))
