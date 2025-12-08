@@ -14,9 +14,12 @@ function Celebration({ winner, isHost, onReuseRoom, onExitRoom, onReload }) {
                         <button className="back-btn" onClick={onExitRoom} style={{ maxWidth: '220px' }}>Close Room</button>
                     </>
                 ) : (
-                    <button className="start-btn" onClick={onReload} style={{ maxWidth: '220px' }}>
-                        Reload / Rejoin
-                    </button>
+                    <>
+                        <div className="celebration-note">Waiting host to restart game room...</div>
+                        <button className="start-btn" onClick={onReload} style={{ maxWidth: '220px' }}>
+                            Reload / Rejoin
+                        </button>
+                    </>
                 )}
             </div>
         </div>

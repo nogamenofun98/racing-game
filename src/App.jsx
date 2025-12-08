@@ -97,6 +97,12 @@ function App() {
     if (trackContainerRef.current) {
       trackContainerRef.current.style.transform = `translateX(-${cameraPositionRef.current}px)`
     }
+
+    // 4. Update background parallax offsets
+    const root = document.documentElement
+    if (root) {
+      root.style.setProperty('--camera-x', `${cameraPositionRef.current}px`)
+    }
   }
 
   const gameLoop = useCallback(function loop(time) {

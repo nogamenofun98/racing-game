@@ -475,6 +475,7 @@ button:active {
     radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.2) 2px, transparent 3px);
   background-size: 400px 400px;
   opacity: 0.5;
+  background-position: calc(var(--camera-x, 0px) * -0.08) 0;
 }
 
 .bg-trees {
@@ -487,7 +488,7 @@ button:active {
   background-image: url('./assets/trees_new.png');
   background-size: auto 100%;
   background-repeat: repeat-x;
-  background-position: bottom left;
+  background-position: calc(var(--camera-x, 0px) * -0.22) bottom;
 }
 
 /* Grass Texture on Track Container is removed, moved to track itself if needed or separate layer */
@@ -697,6 +698,14 @@ button:active {
   padding: 0.95rem 1.6rem;
   font-size: 1.05rem;
   letter-spacing: 0.5px;
+}
+
+.celebration-note {
+  width: 100%;
+  text-align: center;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.5rem;
 }
 
 .celebration-actions .start-btn {
