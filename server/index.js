@@ -15,7 +15,8 @@ const io = new Server(server, {
 });
 
 // In-memory storage
-const rooms = {}; // { roomId: { hostId, racers: [], status: 'lobby' | 'racing' } }
+// { roomId: { hostId, racers: [], status: 'lobby' | 'countdown' | 'racing', winner: null, boostCooldowns: {} } }
+const rooms = {};
 
 function generateRoomId() {
     return Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -29,7 +30,9 @@ io.on('connection', (socket) => {
         rooms[roomId] = {
             hostId: socket.id,
             racers: [{ id: socket.id, name: name, isHost: true, colorIndex: 0 }],
-            status: 'lobby'
+            status: 'lobby',
+            winner: null,
+            boostCooldowns: {}
         };
         socket.join(roomId);
         callback({ roomId, isHost: true, racers: rooms[roomId].racers });
@@ -66,6 +69,8 @@ io.on('connection', (socket) => {
         if (room.status !== 'lobby') return; // Prevent double starts or mid-race triggers
 
         room.status = 'countdown';
+        room.winner = null;
+        room.boostCooldowns = {};
         let countdownValue = 3;
         io.to(roomId).emit('raceCountdown', countdownValue);
 
@@ -89,11 +94,44 @@ io.on('connection', (socket) => {
     });
 
     socket.on('boostRacer', ({ roomId, racerId }) => {
-        // Client requests boost, relay to Host
+        // Client requests boost, relay to Host with light anti-bot rate limiting
         const room = rooms[roomId];
-        if (room) {
-            io.to(room.hostId).emit('applyBoost', racerId);
-        }
+        if (!room || room.status !== 'racing') return;
+
+        const now = Date.now();
+        const last = room.boostCooldowns[racerId] || 0;
+        // Allow human spam but block bot-speed spam; ~90ms window
+        if (now - last < 90) return;
+        room.boostCooldowns[racerId] = now;
+
+        const racerExists = room.racers.some(r => r.id === racerId);
+        if (!racerExists) return;
+
+        io.to(room.hostId).emit('applyBoost', racerId);
+    });
+
+    socket.on('resetRoom', ({ roomId, hostName }, callback) => {
+        const room = rooms[roomId];
+        if (!room || room.hostId !== socket.id) return callback && callback({ success: false, error: 'Not authorized' });
+
+        const name = (hostName || 'Host').slice(0, 30);
+        room.status = 'lobby';
+        room.winner = null;
+        room.boostCooldowns = {};
+        room.racers = [{ id: socket.id, name, isHost: true, colorIndex: 0 }];
+
+        io.to(roomId).emit('roomReset', { roomId, hostId: room.hostId, racers: room.racers });
+        io.to(roomId).emit('updateLobby', room.racers);
+        callback && callback({ success: true, racers: room.racers });
+    });
+
+    socket.on('closeRoom', (roomId, callback) => {
+        const room = rooms[roomId];
+        if (!room || room.hostId !== socket.id) return callback && callback({ success: false, error: 'Not authorized' });
+
+        io.to(roomId).emit('roomClosed');
+        delete rooms[roomId];
+        callback && callback({ success: true });
     });
 
     socket.on('disconnect', () => {

@@ -5,6 +5,14 @@ export default function SetupScreen({ onJoinRoom, onCreateRoom, prefilledRoomId 
     const [roomId, setRoomId] = useState(prefilledRoomId ? prefilledRoomId.toUpperCase() : '')
     const [mode, setMode] = useState(prefilledRoomId ? 'join' : 'menu') // menu, join
 
+    // Keep room ID and mode aligned when a prefill arrives later (e.g., reset)
+    React.useEffect(() => {
+        if (prefilledRoomId) {
+            setRoomId(prefilledRoomId.toUpperCase())
+            setMode('join')
+        }
+    }, [prefilledRoomId])
+
     const handleCreate = () => {
         if (!name.trim()) return alert('Please enter your food name')
         onCreateRoom(name)
@@ -33,7 +41,7 @@ export default function SetupScreen({ onJoinRoom, onCreateRoom, prefilledRoomId 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter your food name"
-                    maxLength={10}
+                    maxLength={30}
                 />
             </div>
 

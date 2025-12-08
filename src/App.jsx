@@ -15,13 +15,24 @@ const TRACK_LENGTH = 7500
 const SOCKET_URL = '/'
 
 function App() {
+  const inviteRoomId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    const paramRoomId = params.get('roomId') || params.get('room') || params.get('roomid')
+    if (!paramRoomId) return ''
+    return paramRoomId.trim().toUpperCase().slice(0, 5)
+  }, [])
+
   const [gameState, setGameState] = useState('menu') // menu, lobby, countdown, racing, finished
   const [racers, setRacers] = useState([])
+  const [winner, setWinner] = useState(null)
   const [roomId, setRoomId] = useState('')
+  const [prefilledRoomId, setPrefilledRoomId] = useState(inviteRoomId)
   const [isHost, setIsHost] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const isHostRef = useRef(false)
   const roomIdRef = useRef('')
+  const winnerRef = useRef(null)
+  const gameStateRef = useRef('menu')
 
   const socketRef = useRef(null)
   const requestRef = useRef()
@@ -40,17 +51,15 @@ function App() {
   const miniMapRefs = useRef({})
   const trackContainerRef = useRef(null)
 
-  const inviteRoomId = useMemo(() => {
-    const params = new URLSearchParams(window.location.search)
-    const paramRoomId = params.get('roomId') || params.get('room') || params.get('roomid')
-    if (!paramRoomId) return ''
-    return paramRoomId.trim().toUpperCase().slice(0, 5)
-  }, [])
-
   // Keep roomIdRef in sync with roomId state
   useEffect(() => {
     roomIdRef.current = roomId
   }, [roomId])
+
+  // Track latest game state for event handlers
+  useEffect(() => {
+    gameStateRef.current = gameState
+  }, [gameState])
 
   const registerRacerRef = useCallback((id, el) => {
     if (el) {
@@ -117,6 +126,11 @@ function App() {
           r.finished = true
           raceFinished = true
           r.place = finishOrderRef.current++
+          if (r.place === 1) {
+            // Snapshot winner immediately to keep stable even if roster changes
+            winnerRef.current = { id: r.id, name: r.name, colorIndex: r.colorIndex }
+            setWinner(winnerRef.current)
+          }
           audioController.playSound('win')
         }
       }
@@ -140,7 +154,8 @@ function App() {
         gameState: {
           racers: racersRef.current,
           cameraPosition: cameraPositionRef.current,
-          status: raceFinished ? 'finished' : 'racing'
+          status: raceFinished ? 'finished' : 'racing',
+          winner: winnerRef.current
         }
       })
       lastSyncTimeRef.current = time
@@ -156,6 +171,13 @@ function App() {
     if (!raceFinished) {
       requestRef.current = requestAnimationFrame(loop)
     } else {
+      if (!winnerRef.current) {
+        const first = racersRef.current.find(r => r.place === 1) || racersRef.current[0]
+        if (first) {
+          winnerRef.current = { id: first.id, name: first.name, colorIndex: first.colorIndex }
+        }
+      }
+      if (winnerRef.current) setWinner(winnerRef.current)
       setGameState('finished')
       // Ensure one final update to snap everything to finish
       setRacers([...racersRef.current])
@@ -170,6 +192,9 @@ function App() {
     })
 
     socketRef.current.on('updateLobby', (updatedRacers) => {
+      // Ignore lobby reshuffles while racing/finished to avoid wiping finish data
+      if (!['menu', 'lobby', 'countdown'].includes(gameStateRef.current)) return
+
       setRacers(updatedRacers)
       racersRef.current = updatedRacers.map(r => ({
         ...r,
@@ -191,6 +216,9 @@ function App() {
     socketRef.current.on('raceStarted', () => {
       setCountdown(null)
       setGameState('racing')
+      setWinner(null)
+      winnerRef.current = null
+      finishOrderRef.current = 1
       audioController.playSound('start')
       startTimeRef.current = Date.now()
       console.log('Race started')
@@ -207,6 +235,9 @@ function App() {
           // Update ref state
           racersRef.current = serverState.racers
           cameraPositionRef.current = serverState.cameraPosition
+          if (serverState.winner) {
+            winnerRef.current = serverState.winner
+          }
 
           // DIRECT DOM UPDATE for Client
           updateDomElements()
@@ -215,6 +246,11 @@ function App() {
           // Only update React state if status changed or throttling allows (e.g. for progress bars or UI)
           if (serverState.status === 'finished') {
             setGameState('finished')
+            if (winnerRef.current) setWinner(winnerRef.current)
+            else {
+              const first = racersRef.current.find(r => r.place === 1) || racersRef.current[0]
+              if (first) setWinner({ id: first.id, name: first.name, colorIndex: first.colorIndex })
+            }
             setRacers([...racersRef.current]) // Ensure final state is consistent
           } else {
             // Optional: Throttle setRacers for UI (ranking/buttons)
@@ -241,6 +277,50 @@ function App() {
       }
     })
 
+    socketRef.current.on('roomReset', ({ roomId: resetRoomId, hostId, racers: resetRacers }) => {
+      // Clear winner and race refs
+      winnerRef.current = null
+      setWinner(null)
+      finishOrderRef.current = 1
+      startTimeRef.current = 0
+      lastTimeRef.current = 0
+      lastSyncTimeRef.current = 0
+
+      setPrefilledRoomId(resetRoomId)
+      setRoomId(resetRoomId)
+
+      if (socketRef.current.id === hostId) {
+        setIsHost(true)
+        isHostRef.current = true
+        racersRef.current = resetRacers || []
+        setRacers(resetRacers || [])
+        gameStateRef.current = 'lobby'
+        setGameState('lobby')
+      } else {
+        setIsHost(false)
+        isHostRef.current = false
+        racersRef.current = []
+        setRacers([])
+        gameStateRef.current = 'menu'
+        setGameState('menu') // let players re-enter their food names
+      }
+      setCountdown(null)
+    })
+
+    socketRef.current.on('roomClosed', () => {
+      winnerRef.current = null
+      setWinner(null)
+      finishOrderRef.current = 1
+      setRacers([])
+      racersRef.current = []
+      setIsHost(false)
+      isHostRef.current = false
+      setRoomId('')
+      setPrefilledRoomId('')
+      gameStateRef.current = 'menu'
+      setGameState('menu')
+    })
+
     return () => {
       socketRef.current.disconnect()
       cancelAnimationFrame(requestRef.current)
@@ -250,6 +330,7 @@ function App() {
   const createRoom = (name) => {
     socketRef.current.emit('createRoom', name, ({ roomId, isHost }) => {
       setRoomId(roomId)
+      setPrefilledRoomId(roomId)
       setIsHost(isHost)
       isHostRef.current = isHost
       setGameState('lobby')
@@ -260,6 +341,7 @@ function App() {
     socketRef.current.emit('joinRoom', { roomId, name }, ({ success, error }) => {
       if (success) {
         setRoomId(roomId)
+        setPrefilledRoomId(roomId)
         setIsHost(false)
         isHostRef.current = false
         setGameState('lobby')
@@ -275,6 +357,44 @@ function App() {
 
   const handleBoost = (racerId) => {
     socketRef.current.emit('boostRacer', { roomId, racerId })
+  }
+
+  const handleReuseRoom = () => {
+    const existingName = racers.find(r => r.id === socketRef.current.id)?.name || ''
+    const nextName = window.prompt('Enter your food name for the next race', existingName) || ''
+    const safeName = nextName.trim()
+    if (!safeName) return
+
+    socketRef.current.emit('resetRoom', { roomId, hostName: safeName }, (resp) => {
+      if (resp?.success && Array.isArray(resp.racers)) {
+        setIsHost(true)
+        isHostRef.current = true
+        setWinner(null)
+        winnerRef.current = null
+        finishOrderRef.current = 1
+        racersRef.current = resp.racers
+        setRacers(resp.racers)
+        setGameState('lobby')
+        setCountdown(null)
+      } else if (resp?.error) {
+        alert(resp.error)
+      }
+    })
+  }
+
+  const handleExitRoom = () => {
+    socketRef.current.emit('closeRoom', roomId, () => {
+      setWinner(null)
+      winnerRef.current = null
+      setRacers([])
+      racersRef.current = []
+      setIsHost(false)
+      isHostRef.current = false
+      setRoomId('')
+      setPrefilledRoomId('')
+      gameStateRef.current = 'menu'
+      setGameState('menu')
+    })
   }
 
   // Timer Loop
@@ -309,7 +429,7 @@ function App() {
         <SetupScreen
           onCreateRoom={createRoom}
           onJoinRoom={joinRoom}
-          prefilledRoomId={inviteRoomId}
+          prefilledRoomId={prefilledRoomId || inviteRoomId}
         />
       )}
 
@@ -344,8 +464,11 @@ function App() {
 
       {gameState === 'finished' && (
         <Celebration
-          winner={racers.find(r => r.place === 1) || racers[0]}
-          onReset={() => window.location.reload()}
+          winner={winner || racers.find(r => r.place === 1) || racers[0]}
+          isHost={isHost}
+          onReuseRoom={handleReuseRoom}
+          onExitRoom={handleExitRoom}
+          onReload={() => window.location.reload()}
         />
       )}
 
