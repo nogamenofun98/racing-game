@@ -23,8 +23,8 @@ export default function GameControls({ racers, onBoost }) {
     useEffect(() => {
         const handleKeyDown = (e) => {
             const key = e.key;
-            // Check if key is '1' through '5'
-            if (['1', '2', '3', '4', '5'].includes(key)) {
+            // Check if key is '1' through '6'
+            if (['1', '2', '3', '4', '5', '6'].includes(key)) {
                 const index = parseInt(key) - 1;
                 // Check if racer exists at this index
                 if (racers[index] && !racers[index].finished) {

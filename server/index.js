@@ -43,7 +43,7 @@ io.on('connection', (socket) => {
             console.log(`Join failed: Room ${roomId} not found. Available rooms: ${Object.keys(rooms).join(', ')}`);
             return callback({ error: 'Room not found' });
         }
-        if (room.racers.length >= 5) {
+        if (room.racers.length >= 6) {
             return callback({ error: 'Room is full' });
         }
         if (room.status !== 'lobby') {
@@ -62,11 +62,24 @@ io.on('connection', (socket) => {
 
     socket.on('startRace', (roomId) => {
         const room = rooms[roomId];
-        if (room && room.hostId === socket.id) {
-            room.status = 'racing';
-            io.to(roomId).emit('raceStarted');
-            console.log(`Race started in room ${roomId}`);
-        }
+        if (!room || room.hostId !== socket.id) return;
+        if (room.status !== 'lobby') return; // Prevent double starts or mid-race triggers
+
+        room.status = 'countdown';
+        let countdownValue = 3;
+        io.to(roomId).emit('raceCountdown', countdownValue);
+
+        const interval = setInterval(() => {
+            countdownValue -= 1;
+            if (countdownValue > 0) {
+                io.to(roomId).emit('raceCountdown', countdownValue);
+            } else {
+                clearInterval(interval);
+                room.status = 'racing';
+                io.to(roomId).emit('raceStarted');
+                console.log(`Race started in room ${roomId}`);
+            }
+        }, 1000);
     });
 
     socket.on('syncState', ({ roomId, gameState }) => {

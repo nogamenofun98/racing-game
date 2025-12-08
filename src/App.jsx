@@ -15,10 +15,11 @@ const TRACK_LENGTH = 5000
 const SOCKET_URL = '/'
 
 function App() {
-  const [gameState, setGameState] = useState('menu') // menu, lobby, racing, finished
+  const [gameState, setGameState] = useState('menu') // menu, lobby, countdown, racing, finished
   const [racers, setRacers] = useState([])
   const [roomId, setRoomId] = useState('')
   const [isHost, setIsHost] = useState(false)
+  const [countdown, setCountdown] = useState(null)
   const isHostRef = useRef(false)
   const roomIdRef = useRef('')
 
@@ -60,6 +61,100 @@ function App() {
     }
   }, [])
 
+  const updateDomElements = () => {
+    // 1. Update Racers
+    racersRef.current.forEach(r => {
+      const el = racerDomRefs.current[r.id]
+      if (el) {
+        el.style.transform = `translateX(${r.position}px)`
+      }
+
+      // 2. Update Minimap
+      const dot = miniMapRefs.current[r.id]
+      if (dot) {
+        const pct = Math.min(100, Math.max(0, (r.position / TRACK_LENGTH) * 100))
+        dot.style.left = `${pct}%`
+      }
+    })
+
+    // 3. Update Camera
+    if (trackContainerRef.current) {
+      trackContainerRef.current.style.transform = `translateX(-${cameraPositionRef.current}px)`
+    }
+  }
+
+  const gameLoop = (time) => {
+    if (!lastTimeRef.current) lastTimeRef.current = time
+    const deltaTime = time - lastTimeRef.current
+    lastTimeRef.current = time
+
+    let raceFinished = false
+    let maxPosition = 0
+
+    racersRef.current.forEach(r => {
+      if (typeof r.position === 'undefined') r.position = 0
+      if (typeof r.speed === 'undefined') r.speed = 0
+      if (typeof r.finished === 'undefined') r.finished = false
+
+      if (r.finished) {
+        raceFinished = true
+      } else {
+        r.speed *= 0.98
+        const baseVariance = r.variance || 1
+        const jitter = 0.9 + Math.random() * 0.2 // Keeps small differences per tick
+        const baseSpeed = (0.02 + Math.random() * 0.06) * baseVariance * jitter
+        r.speed += baseSpeed
+        r.position += r.speed * (deltaTime / 16)
+
+        if (r.position >= TRACK_LENGTH) {
+          r.finished = true
+          raceFinished = true
+          r.place = finishOrderRef.current++
+          audioController.playSound('win')
+        }
+      }
+      maxPosition = Math.max(maxPosition, r.position)
+    })
+
+    // Camera follows leader - Improved Layout
+    // On mobile, we want the leader to be more centered or slightly to the left to see the track ahead
+    const screenWidth = window.innerWidth
+    const offset = screenWidth < 768 ? screenWidth * 0.3 : screenWidth * 0.4
+    const targetCamPos = Math.max(0, maxPosition - offset)
+    cameraPositionRef.current = targetCamPos
+
+    // Apply updates to DOM
+    updateDomElements()
+
+    // Sync state to clients (Throttled to ~30ms) OR if race is finished
+    if (time - lastSyncTimeRef.current > 30 || raceFinished) {
+      socketRef.current.emit('syncState', {
+        roomId: roomIdRef.current,
+        gameState: {
+          racers: racersRef.current,
+          cameraPosition: cameraPositionRef.current,
+          status: raceFinished ? 'finished' : 'racing'
+        }
+      })
+      lastSyncTimeRef.current = time
+    }
+
+    // Update local React state for rendering UI (Buttons, etc) throttled
+    // 200ms is enough for "Wait..." button states and ranking updates
+    if (time - lastUiUpdateRef.current > 200 || raceFinished) {
+      setRacers([...racersRef.current])
+      lastUiUpdateRef.current = time
+    }
+
+    if (!raceFinished) {
+      requestRef.current = requestAnimationFrame(gameLoop)
+    } else {
+      setGameState('finished')
+      // Ensure one final update to snap everything to finish
+      setRacers([...racersRef.current])
+    }
+  }
+
   useEffect(() => {
     socketRef.current = io(SOCKET_URL)
 
@@ -81,7 +176,13 @@ function App() {
       }))
     })
 
+    socketRef.current.on('raceCountdown', (value) => {
+      setCountdown(value)
+      setGameState('countdown')
+    })
+
     socketRef.current.on('raceStarted', () => {
+      setCountdown(null)
       setGameState('racing')
       audioController.playSound('start')
       startTimeRef.current = Date.now()
@@ -195,112 +296,19 @@ function App() {
     }
   }, [gameState])
 
-  const updateDomElements = () => {
-    // 1. Update Racers
-    racersRef.current.forEach(r => {
-      const el = racerDomRefs.current[r.id]
-      if (el) {
-        el.style.transform = `translateX(${r.position}px)`
-      }
-
-      // 2. Update Minimap
-      const dot = miniMapRefs.current[r.id]
-      if (dot) {
-        const pct = Math.min(100, Math.max(0, (r.position / TRACK_LENGTH) * 100))
-        dot.style.left = `${pct}%`
-      }
-    })
-
-    // 3. Update Camera
-    if (trackContainerRef.current) {
-      trackContainerRef.current.style.transform = `translateX(-${cameraPositionRef.current}px)`
-    }
-  }
-
-  const gameLoop = (time) => {
-    if (!lastTimeRef.current) lastTimeRef.current = time
-    const deltaTime = time - lastTimeRef.current
-    lastTimeRef.current = time
-
-    let raceFinished = false
-    let maxPosition = 0
-
-    racersRef.current.forEach(r => {
-      if (typeof r.position === 'undefined') r.position = 0
-      if (typeof r.speed === 'undefined') r.speed = 0
-      if (typeof r.finished === 'undefined') r.finished = false
-
-      if (r.finished) {
-        raceFinished = true
-      } else {
-        r.speed *= 0.98
-        const baseVariance = r.variance || 1
-        const jitter = 0.9 + Math.random() * 0.2 // Keeps small differences per tick
-        const baseSpeed = (0.02 + Math.random() * 0.06) * baseVariance * jitter
-        r.speed += baseSpeed
-        r.position += r.speed * (deltaTime / 16)
-
-        if (r.position >= TRACK_LENGTH) {
-          r.finished = true
-          raceFinished = true
-          r.place = finishOrderRef.current++
-          audioController.playSound('win')
-        }
-      }
-      maxPosition = Math.max(maxPosition, r.position)
-    })
-
-    // Camera follows leader - Improved Layout
-    // On mobile, we want the leader to be more centered or slightly to the left to see the track ahead
-    const screenWidth = window.innerWidth
-    const offset = screenWidth < 768 ? screenWidth * 0.3 : screenWidth * 0.4
-    const targetCamPos = Math.max(0, maxPosition - offset)
-    cameraPositionRef.current = targetCamPos
-
-    // Apply updates to DOM
-    updateDomElements()
-
-    // Sync state to clients (Throttled to ~30ms) OR if race is finished
-    if (time - lastSyncTimeRef.current > 30 || raceFinished) {
-      socketRef.current.emit('syncState', {
-        roomId: roomIdRef.current,
-        gameState: {
-          racers: racersRef.current,
-          cameraPosition: cameraPositionRef.current,
-          status: raceFinished ? 'finished' : 'racing'
-        }
-      })
-      lastSyncTimeRef.current = time
-    }
-
-    // Update local React state for rendering UI (Buttons, etc) throttled
-    // 200ms is enough for "Wait..." button states and ranking updates
-    if (time - lastUiUpdateRef.current > 200 || raceFinished) {
-      setRacers([...racersRef.current])
-      lastUiUpdateRef.current = time
-    }
-
-    if (!raceFinished) {
-      requestRef.current = requestAnimationFrame(gameLoop)
-    } else {
-      setGameState('finished')
-      // Ensure one final update to snap everything to finish
-      setRacers([...racersRef.current])
-    }
-  }
-
   return (
     <div className="game-container">
       {gameState === 'menu' && (
         <SetupScreen onCreateRoom={createRoom} onJoinRoom={joinRoom} />
       )}
 
-      {gameState === 'lobby' && (
+      {(gameState === 'lobby' || gameState === 'countdown') && (
         <Lobby
           roomId={roomId}
           racers={racers}
           isHost={isHost}
           onStartRace={startRace}
+          isStarting={gameState === 'countdown'}
         />
       )}
 
@@ -329,6 +337,15 @@ function App() {
           winner={racers.find(r => r.place === 1) || racers[0]}
           onReset={() => window.location.reload()}
         />
+      )}
+
+      {gameState === 'countdown' && countdown !== null && (
+        <div className="countdown-overlay">
+          <div className="countdown-overlay__circle">
+            <span className="countdown-overlay__number">{countdown}</span>
+          </div>
+          <div className="countdown-overlay__subtext">Race starting...</div>
+        </div>
       )}
     </div>
   )

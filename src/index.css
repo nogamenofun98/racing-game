@@ -173,6 +173,46 @@ button:active {
   position: relative;
 }
 
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  color: #fff;
+  text-align: center;
+}
+
+.countdown-overlay__circle {
+  width: clamp(160px, 24vw, 220px);
+  height: clamp(160px, 24vw, 220px);
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 35px rgba(255, 255, 255, 0.35);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+}
+
+.countdown-overlay__number {
+  font-size: clamp(64px, 12vw, 110px);
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.countdown-overlay__subtext {
+  font-size: clamp(16px, 2.5vw, 24px);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
 /* Setup Screen - Glassmorphism */
 .setup-screen {
   background: rgba(255, 255, 255, 0.1);

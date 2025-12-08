@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Lobby({ roomId, racers = [], isHost, onStartRace }) {
+export default function Lobby({ roomId, racers = [], isHost, onStartRace, isStarting = false }) {
     return (
         <div className="setup-screen">
             <h1>Lobby</h1>
@@ -10,7 +10,7 @@ export default function Lobby({ roomId, racers = [], isHost, onStartRace }) {
             </div>
 
             <div className="racers-list">
-                <h3>Racers ({racers.length}/5)</h3>
+                <h3>Racers ({racers.length}/6)</h3>
                 <div className="racers-grid">
                     {racers.map((racer, index) => (
                         <div key={racer.id || index} className="racer-card" style={{
@@ -29,10 +29,10 @@ export default function Lobby({ roomId, racers = [], isHost, onStartRace }) {
             {isHost ? (
                 <button
                     className="start-btn"
-                    disabled={racers.length < 2}
+                    disabled={racers.length < 2 || isStarting}
                     onClick={onStartRace}
                 >
-                    Start Race!
+                    {isStarting ? 'Starting...' : 'Start Race!'}
                 </button>
             ) : (
                 <div className="waiting-msg">
