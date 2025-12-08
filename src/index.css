@@ -238,6 +238,16 @@ button:active {
   box-sizing: border-box;
 }
 
+.prefill-hint {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: rgba(79, 172, 254, 0.12);
+  border: 1px solid rgba(79, 172, 254, 0.35);
+  color: #d9ecff;
+  font-weight: 600;
+}
+
 /* Mini Map */
 .mini-map-container {
   position: fixed;
@@ -390,6 +400,18 @@ button:active {
   margin-top: 6px;
   letter-spacing: normal;
   text-transform: none;
+}
+
+.share-btn {
+  width: 100%;
+  margin-top: 0.75rem;
+  background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 100%);
+  border: none;
+}
+
+.share-btn--success {
+  background: linear-gradient(45deg, #42e695 0%, #3bb2b8 100%);
+  color: #0c1e1a;
 }
 
 /* Track Styles */

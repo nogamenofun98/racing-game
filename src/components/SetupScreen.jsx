@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 
-export default function SetupScreen({ onJoinRoom, onCreateRoom }) {
+export default function SetupScreen({ onJoinRoom, onCreateRoom, prefilledRoomId = '' }) {
     const [name, setName] = useState('')
-    const [roomId, setRoomId] = useState('')
-    const [mode, setMode] = useState('menu') // menu, join
+    const [roomId, setRoomId] = useState(prefilledRoomId ? prefilledRoomId.toUpperCase() : '')
+    const [mode, setMode] = useState(prefilledRoomId ? 'join' : 'menu') // menu, join
 
     const handleCreate = () => {
         if (!name.trim()) return alert('Please enter your food name')
@@ -19,6 +19,12 @@ export default function SetupScreen({ onJoinRoom, onCreateRoom }) {
     return (
         <div className="setup-screen">
             <h1>Multiplayer Racing</h1>
+
+            {prefilledRoomId && (
+                <div className="prefill-hint">
+                    Invite link detected — Room ID is prefilled for you.
+                </div>
+            )}
 
             <div className="input-group">
                 <label>Your Food Name</label>

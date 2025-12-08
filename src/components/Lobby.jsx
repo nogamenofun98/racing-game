@@ -1,12 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function Lobby({ roomId, racers = [], isHost, onStartRace, isStarting = false }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopyLink = async () => {
+        if (!roomId) return;
+        const inviteUrl = `${window.location.origin}${window.location.pathname}?roomId=${roomId}`;
+
+        try {
+            await navigator.clipboard.writeText(inviteUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1800);
+        } catch {
+            // Fallback prompt if clipboard API is unavailable (e.g. non-https)
+            window.prompt('Copy this invite link and share it:', inviteUrl);
+        }
+    };
+
     return (
         <div className="setup-screen">
             <h1>Lobby</h1>
             <div className="room-info">
                 <h2>Room ID: <span style={{ color: '#4facfe' }}>{roomId}</span></h2>
                 <p>Share this ID with your friends!</p>
+                <button
+                    className={`share-btn ${copied ? 'share-btn--success' : ''}`}
+                    onClick={handleCopyLink}
+                    disabled={!roomId}
+                >
+                    {copied ? 'Invite link copied!' : 'Copy invite link'}
+                </button>
             </div>
 
             <div className="racers-list">

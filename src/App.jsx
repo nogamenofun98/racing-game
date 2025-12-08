@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { io } from 'socket.io-client'
 import RaceTrack from './components/RaceTrack'
 import SetupScreen from './components/SetupScreen'
@@ -11,7 +11,7 @@ import MiniMap from './components/MiniMap'
 import audioController from './utils/AudioController'
 import './index.css'
 
-const TRACK_LENGTH = 5000
+const TRACK_LENGTH = 7500
 const SOCKET_URL = '/'
 
 function App() {
@@ -39,6 +39,13 @@ function App() {
   const racerDomRefs = useRef({})
   const miniMapRefs = useRef({})
   const trackContainerRef = useRef(null)
+
+  const inviteRoomId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    const paramRoomId = params.get('roomId') || params.get('room') || params.get('roomid')
+    if (!paramRoomId) return ''
+    return paramRoomId.trim().toUpperCase().slice(0, 5)
+  }, [])
 
   // Keep roomIdRef in sync with roomId state
   useEffect(() => {
@@ -83,7 +90,7 @@ function App() {
     }
   }
 
-  const gameLoop = (time) => {
+  const gameLoop = useCallback(function loop(time) {
     if (!lastTimeRef.current) lastTimeRef.current = time
     const deltaTime = time - lastTimeRef.current
     lastTimeRef.current = time
@@ -147,13 +154,13 @@ function App() {
     }
 
     if (!raceFinished) {
-      requestRef.current = requestAnimationFrame(gameLoop)
+      requestRef.current = requestAnimationFrame(loop)
     } else {
       setGameState('finished')
       // Ensure one final update to snap everything to finish
       setRacers([...racersRef.current])
     }
-  }
+  }, [])
 
   useEffect(() => {
     socketRef.current = io(SOCKET_URL)
@@ -238,7 +245,7 @@ function App() {
       socketRef.current.disconnect()
       cancelAnimationFrame(requestRef.current)
     }
-  }, [])
+  }, [gameLoop])
 
   const createRoom = (name) => {
     socketRef.current.emit('createRoom', name, ({ roomId, isHost }) => {
@@ -299,7 +306,11 @@ function App() {
   return (
     <div className="game-container">
       {gameState === 'menu' && (
-        <SetupScreen onCreateRoom={createRoom} onJoinRoom={joinRoom} />
+        <SetupScreen
+          onCreateRoom={createRoom}
+          onJoinRoom={joinRoom}
+          prefilledRoomId={inviteRoomId}
+        />
       )}
 
       {(gameState === 'lobby' || gameState === 'countdown') && (
@@ -320,12 +331,11 @@ function App() {
             trackLength={TRACK_LENGTH}
             onRegisterDotRef={registerMiniMapRef}
           />
-          <Background cameraPosition={cameraPositionRef.current} />
+          <Background />
           <RaceTrack
             ref={trackContainerRef}
             racers={racers}
             trackLength={TRACK_LENGTH}
-            cameraPosition={cameraPositionRef.current}
             onRegisterRacerRef={registerRacerRef}
           />
           <GameControls racers={racers} onBoost={handleBoost} />
