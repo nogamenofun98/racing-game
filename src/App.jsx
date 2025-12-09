@@ -439,8 +439,9 @@ function App() {
         setWinner(null)
         winnerRef.current = null
         finishOrderRef.current = 1
-        racersRef.current = resp.racers
-        setRacers(resp.racers)
+        const hydrated = hydrateRacers(resp.racers)
+        racersRef.current = hydrated
+        setRacers(hydrated)
         if (resp.title) {
           setRoomTitle(resp.title)
           roomTitleRef.current = resp.title
