@@ -417,7 +417,8 @@ function App() {
   }
 
   const handleBoost = (racerId) => {
-    socketRef.current.emit('boostRacer', { roomId, racerId })
+    // Boosts are non-critical; volatile reduces backpressure if spammed
+    socketRef.current.volatile.emit('boostRacer', { roomId, racerId })
   }
 
   const handleReuseRoom = () => {

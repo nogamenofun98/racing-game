@@ -130,7 +130,7 @@ io.on('connection', (socket) => {
         const racerExists = room.racers.some(r => r.id === racerId);
         if (!racerExists) return;
 
-        io.to(room.hostId).emit('applyBoost', racerId);
+        io.to(room.hostId).volatile.emit('applyBoost', racerId);
     });
 
     socket.on('resetRoom', ({ roomId, hostName, title }, callback) => {
