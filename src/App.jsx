@@ -26,11 +26,15 @@ function App() {
   const [racers, setRacers] = useState([])
   const [winner, setWinner] = useState(null)
   const [roomId, setRoomId] = useState('')
+  const [roomTitle, setRoomTitle] = useState('')
   const [prefilledRoomId, setPrefilledRoomId] = useState(inviteRoomId)
   const [isHost, setIsHost] = useState(false)
   const [countdown, setCountdown] = useState(null)
+  const [peekRacers, setPeekRacers] = useState([])
+  const [peekTitle, setPeekTitle] = useState('')
   const isHostRef = useRef(false)
   const roomIdRef = useRef('')
+  const roomTitleRef = useRef('')
   const winnerRef = useRef(null)
   const gameStateRef = useRef('menu')
 
@@ -43,6 +47,7 @@ function App() {
   const racersRef = useRef([])
   const finishOrderRef = useRef(1)
   const cameraPositionRef = useRef(0)
+  const pendingPeekIdRef = useRef('')
 
   const timerRef = useRef(null)
 
@@ -55,6 +60,11 @@ function App() {
   useEffect(() => {
     roomIdRef.current = roomId
   }, [roomId])
+
+  // Keep roomTitleRef in sync with roomTitle state
+  useEffect(() => {
+    roomTitleRef.current = roomTitle
+  }, [roomTitle])
 
   // Track latest game state for event handlers
   useEffect(() => {
@@ -76,6 +86,16 @@ function App() {
       delete miniMapRefs.current[id]
     }
   }, [])
+
+  const hydrateRacers = useCallback((list = []) => list.map(r => ({
+    ...r,
+    position: 0,
+    speed: 0,
+    finished: false,
+    place: null,
+    variance: 0.9 + Math.random() * 0.2, // 0.9 - 1.1
+    critChance: 0.12 + Math.random() * 0.12 // 12% - 24%
+  })), [])
 
   const updateDomElements = () => {
     // 1. Update Racers
@@ -195,23 +215,35 @@ function App() {
 
     socketRef.current.on('connect', () => {
       console.log('Connected to server')
+      if (pendingPeekIdRef.current) {
+        const id = pendingPeekIdRef.current
+        socketRef.current.emit('peekRoom', { roomId: id }, (resp) => {
+          if (resp?.racers) {
+            setPeekRacers(resp.racers)
+            if (resp.title) setPeekTitle(resp.title)
+          }
+          if (pendingPeekIdRef.current === id) {
+            pendingPeekIdRef.current = ''
+          }
+        })
+      }
     })
 
-    socketRef.current.on('updateLobby', (updatedRacers) => {
+    socketRef.current.on('updateLobby', (payload) => {
       // Ignore lobby reshuffles while racing/finished to avoid wiping finish data
       if (!['menu', 'lobby', 'countdown'].includes(gameStateRef.current)) return
 
-      setRacers(updatedRacers)
-      racersRef.current = updatedRacers.map(r => ({
-        ...r,
-        position: 0,
-        speed: 0,
-        finished: false,
-        place: null,
-        // Stable per-racer quirks to add personality to boosts and base speed
-        variance: 0.9 + Math.random() * 0.2, // 0.9 - 1.1
-        critChance: 0.12 + Math.random() * 0.12 // 12% - 24%
-      }))
+      const nextRacers = Array.isArray(payload) ? payload : payload?.racers || []
+      const nextTitle = Array.isArray(payload) ? roomTitleRef.current : payload?.title
+
+      const hydrated = hydrateRacers(nextRacers)
+      setRacers(hydrated)
+      racersRef.current = hydrated
+
+      if (typeof nextTitle === 'string') {
+        setRoomTitle(nextTitle)
+        roomTitleRef.current = nextTitle
+      }
     })
 
     socketRef.current.on('raceCountdown', (value) => {
@@ -283,7 +315,7 @@ function App() {
       }
     })
 
-    socketRef.current.on('roomReset', ({ roomId: resetRoomId, hostId, racers: resetRacers }) => {
+    socketRef.current.on('roomReset', ({ roomId: resetRoomId, hostId, racers: resetRacers, title }) => {
       // Clear winner and race refs
       winnerRef.current = null
       setWinner(null)
@@ -298,17 +330,21 @@ function App() {
       if (socketRef.current.id === hostId) {
         setIsHost(true)
         isHostRef.current = true
-        racersRef.current = resetRacers || []
-        setRacers(resetRacers || [])
+        const hydrated = hydrateRacers(resetRacers || [])
+        racersRef.current = hydrated
+        setRacers(hydrated)
         gameStateRef.current = 'lobby'
         setGameState('lobby')
+        const resolvedTitle = title || roomTitleRef.current || 'Racing Room'
+        setRoomTitle(resolvedTitle)
+        roomTitleRef.current = resolvedTitle
       } else {
         setIsHost(false)
         isHostRef.current = false
         racersRef.current = []
         setRacers([])
         gameStateRef.current = 'menu'
-        setGameState('menu') // let players re-enter their food names
+        setGameState('menu') // let players re-enter their racer names
       }
       setCountdown(null)
     })
@@ -323,6 +359,7 @@ function App() {
       isHostRef.current = false
       setRoomId('')
       setPrefilledRoomId('')
+      setRoomTitle('')
       gameStateRef.current = 'menu'
       setGameState('menu')
     })
@@ -331,25 +368,43 @@ function App() {
       socketRef.current.disconnect()
       cancelAnimationFrame(requestRef.current)
     }
-  }, [gameLoop])
+  }, [gameLoop, hydrateRacers])
 
-  const createRoom = (name) => {
-    socketRef.current.emit('createRoom', name, ({ roomId, isHost }) => {
+  const createRoom = (name, title) => {
+    const fallbackTitle = (title || '').trim() || 'Racing Room'
+    socketRef.current.emit('createRoom', name, fallbackTitle, ({ roomId, isHost, title: serverTitle, racers: initialRacers }) => {
       setRoomId(roomId)
       setPrefilledRoomId(roomId)
       setIsHost(isHost)
       isHostRef.current = isHost
+      const resolvedTitle = serverTitle || fallbackTitle
+      setRoomTitle(resolvedTitle)
+      roomTitleRef.current = resolvedTitle
+      if (Array.isArray(initialRacers)) {
+        const hydrated = hydrateRacers(initialRacers)
+        racersRef.current = hydrated
+        setRacers(hydrated)
+      }
       setGameState('lobby')
     })
   }
 
   const joinRoom = (roomId, name) => {
-    socketRef.current.emit('joinRoom', { roomId, name }, ({ success, error }) => {
+    socketRef.current.emit('joinRoom', { roomId, name }, ({ success, error, racers: serverRacers, title: serverTitle }) => {
       if (success) {
         setRoomId(roomId)
         setPrefilledRoomId(roomId)
         setIsHost(false)
         isHostRef.current = false
+        if (typeof serverTitle === 'string') {
+          setRoomTitle(serverTitle)
+          roomTitleRef.current = serverTitle
+        }
+        if (Array.isArray(serverRacers)) {
+          const hydrated = hydrateRacers(serverRacers)
+          setRacers(hydrated)
+          racersRef.current = hydrated
+        }
         setGameState('lobby')
       } else {
         alert(error)
@@ -366,12 +421,18 @@ function App() {
   }
 
   const handleReuseRoom = () => {
+    const nextTitle = window.prompt('Enter game title for the next race', roomTitle || 'Racing Room') || roomTitleRef.current || 'Racing Room'
+    const safeTitle = nextTitle.trim() || 'Racing Room'
+
+    if(!safeTitle) return
+
     const existingName = racers.find(r => r.id === socketRef.current.id)?.name || ''
-    const nextName = window.prompt('Enter your food name for the next race', existingName) || ''
+    const nextName = window.prompt('Enter your racer name for the next race', existingName) || ''
     const safeName = nextName.trim()
     if (!safeName) return
 
-    socketRef.current.emit('resetRoom', { roomId, hostName: safeName }, (resp) => {
+
+    socketRef.current.emit('resetRoom', { roomId, hostName: safeName, title: safeTitle }, (resp) => {
       if (resp?.success && Array.isArray(resp.racers)) {
         setIsHost(true)
         isHostRef.current = true
@@ -380,6 +441,13 @@ function App() {
         finishOrderRef.current = 1
         racersRef.current = resp.racers
         setRacers(resp.racers)
+        if (resp.title) {
+          setRoomTitle(resp.title)
+          roomTitleRef.current = resp.title
+        } else {
+          setRoomTitle(safeTitle)
+          roomTitleRef.current = safeTitle
+        }
         setGameState('lobby')
         setCountdown(null)
       } else if (resp?.error) {
@@ -398,8 +466,45 @@ function App() {
       isHostRef.current = false
       setRoomId('')
       setPrefilledRoomId('')
+      setRoomTitle('')
       gameStateRef.current = 'menu'
       setGameState('menu')
+    })
+  }
+
+  const handleUpdateTitle = (title) => {
+    if (!isHostRef.current || !roomIdRef.current) return
+    const safeTitle = (title || '').trim()
+    socketRef.current.emit('setTitle', { roomId: roomIdRef.current, title: safeTitle || roomTitleRef.current || 'Racing Room' }, (resp) => {
+      if (resp?.success && resp.title) {
+        setRoomTitle(resp.title)
+        roomTitleRef.current = resp.title
+      }
+    })
+  }
+
+  const handlePeekRoom = (maybeRoomId) => {
+    const id = (maybeRoomId || '').trim().toUpperCase()
+    if (!id || id.length < 3) {
+      setPeekRacers([])
+      setPeekTitle('')
+      pendingPeekIdRef.current = ''
+      return
+    }
+    // If socket not ready yet, queue a peek and exit
+    if (!socketRef.current || !socketRef.current.connected) {
+      pendingPeekIdRef.current = id
+      return
+    }
+    pendingPeekIdRef.current = ''
+    socketRef.current.emit('peekRoom', { roomId: id }, (resp) => {
+      if (resp?.racers) {
+        setPeekRacers(resp.racers)
+        if (resp.title) setPeekTitle(resp.title)
+      } else {
+        setPeekRacers([])
+        setPeekTitle('')
+      }
     })
   }
 
@@ -436,21 +541,32 @@ function App() {
           onCreateRoom={createRoom}
           onJoinRoom={joinRoom}
           prefilledRoomId={prefilledRoomId || inviteRoomId}
+          onPeekRoom={handlePeekRoom}
+          peekRacers={peekRacers}
+          peekTitle={peekTitle}
         />
       )}
 
       {(gameState === 'lobby' || gameState === 'countdown') && (
         <Lobby
+          key={`${roomId || 'lobby'}-${roomTitle || 'title'}`}
           roomId={roomId}
           racers={racers}
           isHost={isHost}
           onStartRace={startRace}
           isStarting={gameState === 'countdown'}
+          roomTitle={roomTitle}
+          onUpdateTitle={handleUpdateTitle}
         />
       )}
 
       {(gameState === 'racing' || gameState === 'finished') && (
         <>
+          {roomTitle && (
+            <div className="game-title-badge">
+              {roomTitle}
+            </div>
+          )}
           <Timer ref={timerRef} />
           <MiniMap
             racers={racers}

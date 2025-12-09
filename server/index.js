@@ -1,3 +1,5 @@
+/* eslint-env node */
+/* global process */
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -15,28 +17,36 @@ const io = new Server(server, {
 });
 
 // In-memory storage
-// { roomId: { hostId, racers: [], status: 'lobby' | 'countdown' | 'racing', winner: null, boostCooldowns: {} } }
+// { roomId: { hostId, title, racers: [], status: 'lobby' | 'countdown' | 'racing', winner: null, boostCooldowns: {} } }
 const rooms = {};
 
 function generateRoomId() {
     return Math.random().toString(36).substring(2, 7).toUpperCase();
 }
 
+function sanitizeTitle(rawTitle) {
+    const title = (rawTitle || '').toString().trim();
+    if (!title) return 'Racing Room';
+    return title.slice(0, 80);
+}
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('createRoom', (name, callback) => {
+    socket.on('createRoom', (name, title, callback) => {
         const roomId = generateRoomId();
+        const safeTitle = sanitizeTitle(title);
         rooms[roomId] = {
             hostId: socket.id,
+            title: safeTitle,
             racers: [{ id: socket.id, name: name, isHost: true, colorIndex: 0 }],
             status: 'lobby',
             winner: null,
             boostCooldowns: {}
         };
         socket.join(roomId);
-        callback({ roomId, isHost: true, racers: rooms[roomId].racers });
-        io.to(roomId).emit('updateLobby', rooms[roomId].racers);
+        callback({ roomId, isHost: true, racers: rooms[roomId].racers, title: safeTitle });
+        io.to(roomId).emit('updateLobby', { racers: rooms[roomId].racers, title: safeTitle });
         console.log(`Room ${roomId} created by ${name} (${socket.id})`);
     });
 
@@ -56,11 +66,24 @@ io.on('connection', (socket) => {
         const colorIndex = room.racers.length;
         room.racers.push({ id: socket.id, name: name, isHost: false, colorIndex });
         socket.join(roomId);
-        callback({ success: true });
+        callback({ success: true, racers: room.racers, title: room.title });
 
         // Notify everyone in room of new list
-        io.to(roomId).emit('updateLobby', room.racers);
+        io.to(roomId).emit('updateLobby', { racers: room.racers, title: room.title });
         console.log(`${name} joined room ${roomId}`);
+    });
+
+    socket.on('peekRoom', ({ roomId }, callback) => {
+        const room = rooms[roomId];
+        if (!room || room.status !== 'lobby') {
+            return callback && callback({ error: 'Room not available' });
+        }
+        callback && callback({
+            racers: room.racers,
+            title: room.title,
+            count: room.racers.length,
+            status: room.status
+        });
     });
 
     socket.on('startRace', (roomId) => {
@@ -110,19 +133,21 @@ io.on('connection', (socket) => {
         io.to(room.hostId).emit('applyBoost', racerId);
     });
 
-    socket.on('resetRoom', ({ roomId, hostName }, callback) => {
+    socket.on('resetRoom', ({ roomId, hostName, title }, callback) => {
         const room = rooms[roomId];
         if (!room || room.hostId !== socket.id) return callback && callback({ success: false, error: 'Not authorized' });
 
         const name = (hostName || 'Host').slice(0, 30);
+        const nextTitle = sanitizeTitle(title || room.title);
         room.status = 'lobby';
         room.winner = null;
         room.boostCooldowns = {};
         room.racers = [{ id: socket.id, name, isHost: true, colorIndex: 0 }];
+        room.title = nextTitle;
 
-        io.to(roomId).emit('roomReset', { roomId, hostId: room.hostId, racers: room.racers });
-        io.to(roomId).emit('updateLobby', room.racers);
-        callback && callback({ success: true, racers: room.racers });
+        io.to(roomId).emit('roomReset', { roomId, hostId: room.hostId, racers: room.racers, title: room.title });
+        io.to(roomId).emit('updateLobby', { racers: room.racers, title: room.title });
+        callback && callback({ success: true, racers: room.racers, title: room.title });
     });
 
     socket.on('closeRoom', (roomId, callback) => {
@@ -134,6 +159,17 @@ io.on('connection', (socket) => {
         callback && callback({ success: true });
     });
 
+    socket.on('setTitle', ({ roomId, title }, callback) => {
+        const room = rooms[roomId];
+        if (!room || room.hostId !== socket.id) return callback && callback({ success: false, error: 'Not authorized' });
+        if (room.status !== 'lobby') return callback && callback({ success: false, error: 'Cannot rename during race' });
+
+        const safeTitle = sanitizeTitle(title);
+        room.title = safeTitle;
+        io.to(roomId).emit('updateLobby', { racers: room.racers, title: room.title });
+        callback && callback({ success: true, title: room.title });
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         // Handle cleanup (remove from rooms, etc.) - Simplified for now
@@ -142,7 +178,7 @@ io.on('connection', (socket) => {
             const index = room.racers.findIndex(r => r.id === socket.id);
             if (index !== -1) {
                 room.racers.splice(index, 1);
-                io.to(roomId).emit('updateLobby', room.racers);
+                io.to(roomId).emit('updateLobby', { racers: room.racers, title: room.title });
 
                 // If host left, maybe close room or migrate (simple: close)
                 if (room.hostId === socket.id) {

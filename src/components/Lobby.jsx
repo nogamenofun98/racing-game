@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 
-export default function Lobby({ roomId, racers = [], isHost, onStartRace, isStarting = false }) {
+export default function Lobby({ roomId, racers = [], isHost, onStartRace, isStarting = false, roomTitle = '', onUpdateTitle }) {
     const [copied, setCopied] = useState(false);
+    const [draftTitle, setDraftTitle] = useState(roomTitle || '');
 
     const handleCopyLink = async () => {
         if (!roomId) return;
@@ -19,7 +20,30 @@ export default function Lobby({ roomId, racers = [], isHost, onStartRace, isStar
 
     return (
         <div className="setup-screen">
-            <h1>Lobby</h1>
+            <h1>{roomTitle || 'Lobby'}</h1>
+            <div className="title-bar">
+                {isHost ? (
+                    <div className="title-editor">
+                        <div className="input-group">
+                            <label>Game Title</label>
+                            <input
+                                type="text"
+                                value={draftTitle}
+                                onChange={(e) => setDraftTitle(e.target.value)}
+                                maxLength={80}
+                                placeholder="Set a game title"
+                            />
+                        </div>
+                        <button
+                            className="share-btn"
+                            onClick={() => onUpdateTitle && onUpdateTitle(draftTitle)}
+                            disabled={!draftTitle.trim() || draftTitle.trim() === (roomTitle || '').trim()}
+                        >
+                            Update Title
+                        </button>
+                    </div>
+                ) : <></>}
+            </div>
             <div className="room-info">
                 <h2>Room ID: <span style={{ color: '#4facfe' }}>{roomId}</span></h2>
                 <p>Share this ID with your friends!</p>
