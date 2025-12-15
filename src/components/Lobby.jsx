@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MAX_RACERS, getHueForIndex } from '../constants/racers';
 
 export default function Lobby({ roomId, racers = [], isHost, onStartRace, isStarting = false, roomTitle = '', onUpdateTitle }) {
     const [copied, setCopied] = useState(false);
@@ -57,14 +58,17 @@ export default function Lobby({ roomId, racers = [], isHost, onStartRace, isStar
             </div>
 
             <div className="racers-list">
-                <h3>Racers ({racers.length}/6)</h3>
+                <h3>Racers ({racers.length}/{MAX_RACERS})</h3>
                 <div className="racers-grid">
                     {racers.map((racer, index) => (
                         <div key={racer.id || index} className="racer-card" style={{
                             borderColor: racer.isHost ? '#FFD700' : '#ccc',
                             background: 'rgba(255, 255, 255, 0.1)'
                         }}>
-                            <div className="racer-avatar" style={{ backgroundColor: `hsl(${[0, 120, 240, 60, 300, 180, 30, 270][(racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0)) % 8]}, 70%, 50%)` }}></div>
+                            <div
+                                className="racer-avatar"
+                                style={{ backgroundColor: `hsl(${getHueForIndex(racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0))}, 70%, 50%)` }}
+                            ></div>
                             <span className="racer-name">
                                 {racer.name} {racer.isHost && '👑'}
                             </span>

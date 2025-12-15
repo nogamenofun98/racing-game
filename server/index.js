@@ -16,6 +16,9 @@ const io = new Server(server, {
     }
 });
 
+const MAX_RACERS = 10;
+const COLOR_COUNT = 10;
+
 // In-memory storage
 // { roomId: { hostId, title, racers: [], status: 'lobby' | 'countdown' | 'racing', winner: null, boostCooldowns: {} } }
 const rooms = {};
@@ -56,14 +59,14 @@ io.on('connection', (socket) => {
             console.log(`Join failed: Room ${roomId} not found. Available rooms: ${Object.keys(rooms).join(', ')}`);
             return callback({ error: 'Room not found' });
         }
-        if (room.racers.length >= 6) {
+        if (room.racers.length >= MAX_RACERS) {
             return callback({ error: 'Room is full' });
         }
         if (room.status !== 'lobby') {
             return callback({ error: 'Race already started' });
         }
 
-        const colorIndex = room.racers.length;
+        const colorIndex = room.racers.length % COLOR_COUNT;
         room.racers.push({ id: socket.id, name: name, isHost: false, colorIndex });
         socket.join(roomId);
         callback({ success: true, racers: room.racers, title: room.title });

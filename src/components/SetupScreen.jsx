@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { getHueForIndex } from '../constants/racers'
 
 export default function SetupScreen({ onJoinRoom, onCreateRoom, prefilledRoomId = '', onPeekRoom, peekRacers = [], peekTitle = '' }) {
     const [name, setName] = useState('')
@@ -94,7 +95,10 @@ export default function SetupScreen({ onJoinRoom, onCreateRoom, prefilledRoomId 
                                         borderColor: racer.isHost ? '#FFD700' : '#ccc',
                                         background: 'rgba(255, 255, 255, 0.1)'
                                     }}>
-                                        <div className="racer-avatar" style={{ backgroundColor: `hsl(${[0, 120, 240, 60, 300, 180, 30, 270][(racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0)) % 8]}, 70%, 50%)` }}></div>
+                                        <div
+                                            className="racer-avatar"
+                                            style={{ backgroundColor: `hsl(${getHueForIndex(racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0))}, 70%, 50%)` }}
+                                        ></div>
                                         <span className="racer-name">
                                             {racer.name} {racer.isHost && '👑'}
                                         </span>

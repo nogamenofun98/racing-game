@@ -1,12 +1,12 @@
 import React, { forwardRef, useMemo, memo } from 'react'
 import RunnerSprite from './RunnerSprite'
+import { getHueForIndex } from '../constants/racers'
 
 const Racer = memo(forwardRef(({ racer }, ref) => {
     // Randomize colors for variety (Original is Red)
     const hue = useMemo(() => {
-        const hues = [0, 120, 240, 60, 300, 180, 30, 270]
         const index = racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0)
-        return hues[index % hues.length]
+        return getHueForIndex(index)
     }, [racer.colorIndex, racer.id])
 
     const isMobilePortrait = typeof window !== 'undefined' &&

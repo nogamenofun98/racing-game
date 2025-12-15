@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { HOTKEYS, getHueForIndex } from '../constants/racers';
 
 export default function GameControls({ racers, onBoost }) {
     const [boostEffects, setBoostEffects] = useState({});
@@ -23,13 +24,9 @@ export default function GameControls({ racers, onBoost }) {
     useEffect(() => {
         const handleKeyDown = (e) => {
             const key = e.key;
-            // Check if key is '1' through '6'
-            if (['1', '2', '3', '4', '5', '6'].includes(key)) {
-                const index = parseInt(key) - 1;
-                // Check if racer exists at this index
-                if (racers[index] && !racers[index].finished) {
-                    handleBoost(racers[index].id);
-                }
+            const index = HOTKEYS.indexOf(key);
+            if (index >= 0 && racers[index] && !racers[index].finished) {
+                handleBoost(racers[index].id);
             }
         };
 
@@ -40,9 +37,10 @@ export default function GameControls({ racers, onBoost }) {
     return (
         <div className="game-controls">
             <div className="boost-grid">
-                {racers.map((racer) => {
+                {racers.map((racer, idx) => {
                     const effect = boostEffects[racer.id];
-                    const colorHue = [0, 120, 240, 60, 300, 180, 30, 270][(racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0)) % 8];
+                    const colorHue = getHueForIndex(racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0));
+                    const hotkey = HOTKEYS[idx];
                     return (
                         <button
                             key={racer.id}
@@ -52,7 +50,11 @@ export default function GameControls({ racers, onBoost }) {
                             style={{
                                 backgroundColor: `hsl(${colorHue}, 70%, 50%)`
                             }}
+                            title={hotkey ? `Press ${hotkey} to boost ${racer.name}` : `Boost ${racer.name}`}
                         >
+                            {hotkey && (
+                                <span className="boost-hotkey">{hotkey}</span>
+                            )}
                             {effect === 'mega'
                                 ? 'Mega Burst!'
                                 : effect === 'strong'

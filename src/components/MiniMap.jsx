@@ -1,11 +1,10 @@
 import React, { memo } from 'react'
+import { getHueForIndex } from '../constants/racers'
 
 const MiniMap = memo(({ racers, trackLength, onRegisterDotRef }) => {
-    // Helper to get color (copied logic from Racer.jsx for consistency)
     const getRacerColor = (racer) => {
-        const hues = [0, 120, 240, 60, 300, 180, 30, 270]
         const index = racer.colorIndex !== undefined ? racer.colorIndex : (racer.id ? racer.id.charCodeAt(0) : 0)
-        const hue = hues[index % hues.length]
+        const hue = getHueForIndex(index)
         return `hsl(${hue}, 100%, 50%)`
     }
 
